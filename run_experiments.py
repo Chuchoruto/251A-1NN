@@ -1,4 +1,8 @@
+#!/usr/bin/env python
+
+import os
 import time
+import csv
 import numpy as np
 import torch
 import torchvision
@@ -64,8 +68,11 @@ def compute_kmeans_prototypes(digit_to_images, k):
     digit_to_centroids = {}
     for d in range(10):
         X_d = digit_to_images[d]
-        kmeans = KMeans(n_clusters=k, random_state=42)
+        
+        # KMeans with no fixed seed => random initialization each time
+        kmeans = KMeans(n_clusters=k)
         kmeans.fit(X_d)
+        
         digit_to_centroids[d] = kmeans.cluster_centers_  # shape (k, 784)
     
     # Combine into a single matrix
@@ -94,10 +101,7 @@ def sample_random_prototypes(train_dataset, m):
     if m > len(train_dataset):
         raise ValueError(f"m={m} cannot exceed total training samples {len(train_dataset)}")
     
-    # We can either:
-    # 1) Use random_split, or
-    # 2) Choose random indices using torch.randint.
-    # Here we show random_split for convenience:
+    # Use random_split for convenience
     subset_m, _ = random_split(train_dataset, [m, len(train_dataset) - m])
     
     vectors_list = []
@@ -177,6 +181,9 @@ def classify_1nn(train_vectors, train_labels, test_dataset, batch_size=1000):
 ###############################################################################
 
 def main():
+    # Ensure results directory exists
+    os.makedirs("./results", exist_ok=True)
+
     # 1) Load full MNIST once
     train_dataset, test_dataset = load_mnist()
     print(f"Loaded MNIST: {len(train_dataset)} train samples, {len(test_dataset)} test samples.\n")
@@ -188,34 +195,61 @@ def main():
     k_values = [100, 500, 1000]    # placeholder values for experiment
     m_values = [1000, 5000, 10000] # placeholder values for random sampling
     
-    # We will store results in lists or print them directly
-    print("================================================")
-    print("     k-Means Prototypes (k centroids/class)    ")
-    print("================================================\n")
+    num_runs = 10  # We'll run each experiment setting 10 times
     
+    # --------------------------------------------------------------------
+    #            K-Means Prototypes (k centroids/class)
+    # --------------------------------------------------------------------
+    
+    print("=================== K-Means Experiments ===================\n")
     for k in k_values:
-        print(f"Computing {k} centroids per digit...")
-        # Compute the prototypes
-        all_centroids, all_labels = compute_kmeans_prototypes(digit_to_images, k)
+        csv_filename = f"./results/k-means_{k}_centroids.csv"
         
-        # Classify test set
-        accuracy, classify_time = classify_1nn(all_centroids, all_labels, test_dataset)
-        
-        print(f"  k = {k}: accuracy = {accuracy:.2f}%, classify_time = {classify_time:.2f} s\n")
+        # Open the CSV file in write mode and add headers
+        with open(csv_filename, mode='w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["accuracy", "classify_time"])
+            
+            # We run k-means -> 1-NN classification 10 times
+            for run_idx in range(num_runs):
+                print(f"[k={k}] Run {run_idx+1}/{num_runs} ...")
+                
+                # Compute the prototypes
+                all_centroids, all_labels = compute_kmeans_prototypes(digit_to_images, k)
+                
+                # Classify test set
+                accuracy, classify_time = classify_1nn(all_centroids, all_labels, test_dataset)
+                
+                # Write results to CSV
+                writer.writerow([accuracy, classify_time])
+                
+        print(f"Saved results to {csv_filename}\n")
     
-    print("================================================")
-    print("            Random Sampling (m samples)        ")
-    print("================================================\n")
+    # --------------------------------------------------------------------
+    #         Random Sampling Prototypes (m samples)
+    # --------------------------------------------------------------------
     
+    print("================= Random Sampling Experiments ==============\n")
     for m in m_values:
-        print(f"Sampling {m} random train images...")
-        # Randomly sample
-        sample_vectors, sample_labels = sample_random_prototypes(train_dataset, m)
+        csv_filename = f"./results/random_sample_{m}.csv"
         
-        # Classify test set
-        accuracy, classify_time = classify_1nn(sample_vectors, sample_labels, test_dataset)
-        
-        print(f"  m = {m}: accuracy = {accuracy:.2f}%, classify_time = {classify_time:.2f} s\n")
+        with open(csv_filename, mode='w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["accuracy", "classify_time"])
+            
+            for run_idx in range(num_runs):
+                print(f"[m={m}] Run {run_idx+1}/{num_runs} ...")
+                
+                # Randomly sample
+                sample_vectors, sample_labels = sample_random_prototypes(train_dataset, m)
+                
+                # Classify test set
+                accuracy, classify_time = classify_1nn(sample_vectors, sample_labels, test_dataset)
+                
+                writer.writerow([accuracy, classify_time])
+                
+        print(f"Saved results to {csv_filename}\n")
+
 
 if __name__ == "__main__":
     main()
