@@ -80,10 +80,10 @@ The experiments explore two ways to select **prototypes** for the 1-Nearest Neig
 We compare **classification accuracy** and **runtime** across different prototype selection methods while keeping the total number of samples constant.
 
 | Number of Samples | K-Means Centroids Accuracy (%) | Random Sampling Accuracy (%) |
-|------------------|------------------------------|----------------------------|
-| 1000            | TBD (after experiment)       | TBD (after experiment)     |
-| 5000            | TBD (after experiment)       | TBD (after experiment)     |
-| 10000           | TBD (after experiment)       | TBD (after experiment)     |
+|-------------------|--------------------------------|----------------------------|
+| 1000              |     95.76 ± 0.13               |       88.72 ± 0.33         |
+| 5000              |     96.76 ± 0.08               |       93.59 ± 0.21         |
+| 10000             |     96.91 ± 0.12               |       94.84 ± 0.20         |
 
 **Observations:**
 - K-Means centroids generally perform **better** than random sampling because they summarize important variations in each class.
@@ -102,7 +102,7 @@ python3 1nn_full_batched.py
 
 This script performs **full** 1-NN classification, where every test image is compared against all 60,000 training samples.
 
-**Expected Baseline Accuracy:** ~97% (Based on previous MNIST 1-NN results)
+**Baseline Accuracy:** 96.91%
 
 **Trade-off:**
 - **High accuracy** but **slower** due to the large number of distance computations
